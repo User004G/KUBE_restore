@@ -108,16 +108,40 @@ class Gui(ctk.CTk):
         self.sidebar.grid(row=0, column=0, padx=5, pady=5, rowspan=2, sticky="ns")
         self.sidebar.grid_propagate(False)
 
-        # Hauptframes (LO/RO/LU/RU)
-        self.LO_frame = ctk.CTkFrame(self, corner_radius=0)
-        self.RO_frame = ctk.CTkFrame(self, corner_radius=0)
-        self.LU_frame = ctk.CTkFrame(self, corner_radius=0)
-        self.RU_frame = ctk.CTkFrame(self, corner_radius=0)
+        # Container für die PanedWindow Struktur
+        import tkinter as tk
+        
+        self.content_area = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.content_area.grid(row=0, column=1, rowspan=2, columnspan=2, sticky="nsew", padx=5, pady=5)
+        
+        # Master Vertical PanedWindow (Split Rows)
+        self.main_pw = tk.PanedWindow(self.content_area, orient=tk.VERTICAL,
+                                      sashwidth=4, sashrelief=tk.FLAT, bg="#2b2b2b")
+        self.main_pw.pack(fill=tk.BOTH, expand=True)
 
-        self.LO_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
-        self.RO_frame.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
-        self.LU_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
-        self.RU_frame.grid(row=1, column=2, sticky="nsew", padx=5, pady=5)
+        self.row_pws = []
+        self.panels = []
+        
+        # 2 rows x 4 columns = 8 Felder
+        for r in range(2):
+            row_pw = tk.PanedWindow(self.main_pw, orient=tk.HORIZONTAL,
+                                    sashwidth=4, sashrelief=tk.FLAT, bg="#2b2b2b")
+            self.main_pw.add(row_pw, minsize=100)
+            self.row_pws.append(row_pw)
+            
+            for c in range(4):
+                panel = ctk.CTkFrame(row_pw, corner_radius=0)
+                row_pw.add(panel, minsize=100)
+                self.panels.append(panel)
+        
+        # Mapping der ersten 4 Panels auf die bekannten Variablen
+        self.LO_frame = self.panels[0]
+        self.RO_frame = self.panels[1]
+        self.LU_frame = self.panels[4] # Erste Position in der 2. Reihe
+        self.RU_frame = self.panels[5] # Zweite Position in der 2. Reihe
+        
+        # Initiale Verteilung der Fensterbreiten verzögert aufrufen
+        self.after(200, self.reset_panes)
 
         # Plots vorbereiten
         self._init_LO_frame()
@@ -128,6 +152,28 @@ class Gui(ctk.CTk):
 
         # Queue-Polling starten
         self._poll_after_id = self.after(1000, self._poll_data_q)
+
+    def reset_panes(self):
+        """Verteilt den Platz gleichmäßig auf die Sashes (Trennlinien)."""
+        self.update_idletasks()
+        
+        total_height = self.main_pw.winfo_height()
+        if total_height > 10:
+            row_height = total_height // 2
+            try:
+                self.main_pw.sash_place(0, 0, row_height)
+            except:
+                pass
+            
+        for row_pw in self.row_pws:
+            total_width = row_pw.winfo_width()
+            if total_width > 10:
+                col_width = total_width // 4
+                for c in range(3):
+                    try:
+                        row_pw.sash_place(c, (c + 1) * col_width, 0)
+                    except:
+                        pass
 
     def _init_sidebar(self):
         self.sidebar.grid_columnconfigure(0, weight=1)
