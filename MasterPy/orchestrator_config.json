@@ -1,0 +1,16 @@
+{
+  "build": "Debug",
+  "platform": "x64",
+
+  "kube_cpp": {
+    "exe": "../{platform}/{build}/KUBE_CPP.exe",
+    "cwd": "../{platform}/{build}",
+    "args": []
+  },
+
+  "hello_py": {
+    "script": "../MasterPy/HelloPy.py",
+    "cwd": "../MasterPy",
+    "args": []
+  }
+}

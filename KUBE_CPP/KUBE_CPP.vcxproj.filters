@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Ressourcendateien">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="MainThread">
+      <UniqueIdentifier>{f3b20272-69ac-46c3-8bcd-ce8f67ca05e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MainThread\Header">
+      <UniqueIdentifier>{7a9f75b6-cb13-4337-9e26-26121aff1225}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MainThread\CPP_Dateien">
+      <UniqueIdentifier>{ed1815e0-38ea-446a-b433-b047c3390596}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ParallelThread1">
+      <UniqueIdentifier>{272dd368-5697-4b92-984a-9d49991aecde}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ParallelThread1\Header">
+      <UniqueIdentifier>{2b472f5a-d1e4-471e-831c-cd07cfe5d763}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ParallelThread1\CPP_Dateien">
+      <UniqueIdentifier>{58aa8b4e-ced2-4c5f-b524-7dd0e7cee7d7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Aktivator.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FitnessManager.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="LotManager.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="MultiObjectiveManager.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="MutationsManager.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="MutationStrategy.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="RiskManager.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Synchronisator.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ToolBox.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="SwarmContextEvaluator.cpp">
+      <Filter>ParallelThread1\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="SwarmQualityEvaluator.cpp">
+      <Filter>ParallelThread1\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Parallel\MutationDataManager.cpp">
+      <Filter>ParallelThread1\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Parallel\ParallelMutationOrchestrator.cpp">
+      <Filter>ParallelThread1\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Parallel\SelectionManager.cpp">
+      <Filter>ParallelThread1\CPP_Dateien</Filter>
+    </ClCompile>
+    <ClCompile Include="DefaultMutationStrategy.cpp">
+      <Filter>MainThread\CPP_Dateien</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Aktivator.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="FitnessManager.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="LotManager.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="MultiObjectivemanager.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="MutationsManager.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="RiskManager.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="MutationStrategy.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="ToolBox.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="MutationDataManager.h">
+      <Filter>ParallelThread1\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectionManager.h">
+      <Filter>ParallelThread1\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="SwarmContextEvaluator.h">
+      <Filter>ParallelThread1\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="SwarmQualityEvaluator.h">
+      <Filter>ParallelThread1\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="Parallel\ParallelMutationOrchestrator.h">
+      <Filter>ParallelThread1\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="DefaultMutationStrategy.h">
+      <Filter>MainThread\Header</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

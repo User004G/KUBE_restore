@@ -1,0 +1,19 @@
+.vs/
+KUBE_ACTIVATOR_DEBUG.txt
+x64/
+Debug/
+Release/
+*.log
+# Python bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+# Database files
+*.db
+temp_*.db
+*.obj
+*.lib
+*.exp
+*.dll
+*.exe
