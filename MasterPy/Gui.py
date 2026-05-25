@@ -874,6 +874,7 @@ class Gui(ctk.CTk):
             yr = (ymax - ymin) * 0.10 if ymax > ymin else 1
             self.ax_bal.set_xlim(xmin - xr, xmax + xr)
             self.ax_bal.set_ylim(ymin - yr, ymax + yr)
+            print(f'[Gui] X-Axis limits set to: {mdates.num2date(xmin)} to {mdates.num2date(xmax)}')
 
         self.fig_bal.autofmt_xdate()
         self.canvas_bal.draw_idle()
