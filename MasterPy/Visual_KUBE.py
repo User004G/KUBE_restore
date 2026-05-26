@@ -22,13 +22,20 @@ def Start():
     master_thread = threading.Thread(target=loop.run, daemon=True)
     master_thread.start()
     
-    # Hauptanwendung starten (OHNE Splash Screen)
-    app = Gui(data_q=data_q, cmd_q=cmd_q, stop_evt=stop_evt)
-    app.mainloop()
+    # Verstecktes Root-Fenster fǬr CustomTkinter erstellen (exakt wie KUBE)
+    root = ctk.CTk()
+    root.withdraw()
+
+    # Hauptanwendung als Toplevel starten (OHNE Splash Screen)
+    app = Gui(master_root=root, data_q=data_q, cmd_q=cmd_q, stop_evt=stop_evt)
+    
+    # Warte auf das Schlieen des GUI-Fensters
+    root.wait_window(app)
     
     # Cleanup nach Beenden der GUI
     stop_evt.set()
     master_thread.join(timeout=2.0)
+    root.destroy()
 
 
 if __name__ == "__main__":

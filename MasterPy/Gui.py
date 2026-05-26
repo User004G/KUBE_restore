@@ -16,17 +16,74 @@ import matplotlib.dates as mdates
 from mpl_toolkits.mplot3d import Axes3D
 
 
-class Gui(ctk.CTk):
+
+class DraggableModuleTile(ctk.CTkButton):
+    def __init__(self, master, module_key, text, **kwargs):
+        super().__init__(master, text=text, **kwargs)
+        self.module_key = module_key
+        self.master_gui = master.winfo_toplevel()
+        
+        self.bind("<Button-1>", self.on_drag_start)
+        self.bind("<B1-Motion>", self.on_drag_motion)
+        self.bind("<ButtonRelease-1>", self.on_drag_end)
+
+        self.drag_window = None
+
+    def on_drag_start(self, event):
+        self.drag_window = ctk.CTkToplevel()
+        self.drag_window.overrideredirect(True)
+        self.drag_window.attributes("-topmost", True)
+        self.drag_window.attributes("-alpha", 0.7)
+        
+        lbl = ctk.CTkLabel(self.drag_window, text=self.cget("text"), 
+                           fg_color=self.cget("fg_color"), 
+                           font=self.cget("font"),
+                           corner_radius=5,
+                           width=self.winfo_width(),
+                           height=self.winfo_height())
+        lbl.pack(expand=True, fill="both")
+        
+        self._offset_x = event.x
+        self._offset_y = event.y
+        
+        x = self.winfo_pointerx() - self._offset_x
+        y = self.winfo_pointery() - self._offset_y
+        
+        w = max(70, self.winfo_width())
+        h = max(28, self.winfo_height())
+        self.drag_window.geometry(f"{w}x{h}+{x}+{y}")
+
+    def on_drag_motion(self, event):
+        if self.drag_window:
+            x = self.winfo_pointerx() - self._offset_x
+            y = self.winfo_pointery() - self._offset_y
+            self.drag_window.geometry(f"+{x}+{y}")
+
+    def on_drag_end(self, event):
+        if self.drag_window:
+            self.drag_window.destroy()
+            self.drag_window = None
+
+        root = self.master_gui
+        if hasattr(root, "handle_drop"):
+            x_root = self.winfo_pointerx()
+            y_root = self.winfo_pointery()
+            root.handle_drop(x_root, y_root, self.module_key)
+
+class Gui(ctk.CTkToplevel):
+
     """
-    Visualizer-GUI:
+    Visualizer-GUI (CTkToplevel):
     - Hält komplette Historie in Caches (kann bei reset-Flag gelöscht werden)
     - View-Range (max/mid/min) steuert, welcher Ausschnitt gezeichnet wird
     """
 
-    def __init__(self, data_q, cmd_q, stop_evt):
-        super().__init__()
-        self.data_q   = data_q
-        self.cmd_q    = cmd_q
+    def __init__(self, master_root=None, data_q=None, cmd_q=None, stop_evt=None):
+        super().__init__(master=master_root)
+
+        self.master_root = master_root
+        self.data_q = data_q
+        self.cmd_q = cmd_q
         self.stop_evt = stop_evt
 
         # ---------------- View-Range / Limits ----------------
@@ -121,6 +178,7 @@ class Gui(ctk.CTk):
 
         self.row_pws = []
         self.panels = []
+        self.slots = {}
         
         # 2 rows x 4 columns = 8 Felder
         for r in range(2):
@@ -133,25 +191,25 @@ class Gui(ctk.CTk):
                 panel = ctk.CTkFrame(row_pw, corner_radius=0)
                 row_pw.add(panel, minsize=100)
                 self.panels.append(panel)
-        
-        # Mapping der ersten 4 Panels auf die bekannten Variablen
-        self.LO_frame = self.panels[0]
-        self.RO_frame = self.panels[1]
-        self.LU_frame = self.panels[4] # Erste Position in der 2. Reihe
-        self.RU_frame = self.panels[5] # Zweite Position in der 2. Reihe
+                
+                # Drop Module Here text
+                lbl = ctk.CTkLabel(panel, text=f"Slot {r+1}x{c+1}\n(Drop Module Here)", text_color="gray")
+                lbl.place(relx=0.5, rely=0.5, anchor="center")
+                self.slots[(r,c)] = {"frame": panel, "content": None}
         
         # Initiale Verteilung der Fensterbreiten verzögert aufrufen
         self.after(200, self.reset_panes)
-
-        # Plots vorbereiten
-        self._init_LO_frame()
-        self._init_RO_frame()
-        self._init_LU_frame()
-        self._init_RU_frame()
+        
         self._init_sidebar()
 
         # Queue-Polling starten
         self._poll_after_id = self.after(1000, self._poll_data_q)
+
+        # Plots initial in die 4 Panels verteilen
+        self.after(400, lambda: self.handle_drop(0, 0, "MOD_BALANCE", direct_slot=(0,0)))
+        self.after(500, lambda: self.handle_drop(0, 0, "MOD_RISK", direct_slot=(0,1)))
+        self.after(600, lambda: self.handle_drop(0, 0, "MOD_PARAM_IN", direct_slot=(1,0)))
+        self.after(700, lambda: self.handle_drop(0, 0, "MOD_PARAM_OUT", direct_slot=(1,1)))
 
     def reset_panes(self):
         """Verteilt den Platz gleichmäßig auf die Sashes (Trennlinien)."""
@@ -210,67 +268,60 @@ class Gui(ctk.CTk):
         self.MutationWert = ctk.CTkLabel(self.InfoBox, text="0", font=ctk.CTkFont(size=14))
         self.MutationWert.grid(row=2, column=1, padx=0, pady=0, sticky="nwe")
 
-        # --- View Range Box -------------------------------------------------
-        range_frame = ctk.CTkFrame(self.sidebar, corner_radius=8)
-        range_frame.grid(row=3, column=0, padx=10, pady=10, sticky="nwe")
+        # --- Draggable Module Tiles -------------------------------------------------
+        mod_frame = ctk.CTkFrame(self.sidebar, corner_radius=8)
+        mod_frame.grid(row=3, column=0, padx=10, pady=10, sticky="nwe")
+        mod_frame.grid_columnconfigure(0, weight=1)
 
-        range_frame.grid_columnconfigure(0, weight=1)
+        title_mod = ctk.CTkLabel(mod_frame, text="Visualisierung", font=("Segoe UI", 14, "bold"))
+        title_mod.grid(row=0, column=0, pady=(5, 10), sticky="ew")
 
-        title = ctk.CTkLabel(range_frame, text="Darstellung", font=("Segoe UI", 14, "bold"))
-        title.grid(row=0, column=0, columnspan=2, padx=(10, 10), pady=(5, 5), sticky="ew")
+        modules = [
+            ("MOD_BALANCE", "Balance"),
+            ("MOD_RISK", "RiskManager"),
+            ("MOD_PARAM_IN", "Parameter Input"),
+            ("MOD_PARAM_OUT", "Parameter Output")
+        ]
+        
+        for idx, (key, name) in enumerate(modules):
+            btn = DraggableModuleTile(mod_frame, module_key=key, text=name, 
+                                      fg_color="#1f538d", height=28, width=70, font=("Segoe UI", 12))
+            btn.grid(row=idx+1, column=0, pady=5, padx=10, sticky="ew")
+            
+    def handle_drop(self, x_root, y_root, module_key, direct_slot=None):
+        """
+        Called when a DraggableModuleTile is dropped or programmatically initialized.
+        """
+        found = direct_slot
+        if not found:
+            for (r,c), slot_data in self.slots.items():
+                frame = slot_data["frame"]
+                fx = frame.winfo_rootx()
+                fy = frame.winfo_rooty()
+                fw = frame.winfo_width()
+                fh = frame.winfo_height()
+                if fx <= x_root <= fx + fw and fy <= y_root <= fy + fh:
+                    found = (r,c)
+                    break
+        
+        if found:
+            frame = self.slots[found]["frame"]
+            # Clear old content
+            for widget in frame.winfo_children():
+                widget.destroy()
+                
+            self.slots[found]["content"] = module_key
+            
+            # Load new plot
+            if module_key == "MOD_BALANCE":
+                self._init_balance_plot(frame)
+            elif module_key == "MOD_RISK":
+                self._init_risk_plot(frame)
+            elif module_key == "MOD_PARAM_IN":
+                self._init_3d_input_plot(frame)
+            elif module_key == "MOD_PARAM_OUT":
+                self._init_3d_output_plot(frame)
 
-        ctk.CTkLabel(range_frame, text="Balance:").grid(row=1, column=0, padx=(10, 5), sticky="w")
-        self.balance_range = ctk.CTkComboBox(
-            range_frame,
-            values=["max", "mid", "min"],
-            command=self.on_range_change,
-            width=80
-        )
-        self.balance_range.set("max")
-        self.balance_range.grid(row=1, column=1, padx=(5, 10), pady=5, sticky="e")
-
-        ctk.CTkLabel(range_frame, text="Statistik:").grid(row=2, column=0, padx=(10, 5), sticky="w")
-        self.stat_range = ctk.CTkComboBox(
-            range_frame,
-            values=["max", "mid", "min"],
-            command=self.on_range_change,
-            width=80
-        )
-        self.stat_range.set("max")
-        self.stat_range.grid(row=2, column=1, padx=(5, 10), pady=5, sticky="e")
-
-        # --- Statistik-View Auswahlbox -----------------------------------------
-        stat_view_frame = ctk.CTkFrame(self.sidebar, corner_radius=8)
-        stat_view_frame.grid(row=4, column=0, padx=10, pady=(5, 10), sticky="nwe")
-
-        ctk.CTkLabel(
-            stat_view_frame,
-            text="Zeige in Statistik:",
-            font=("Segoe UI", 14, "bold")
-        ).grid(row=0, column=0, columnspan=2, pady=(5, 5), sticky="ew")
-
-        self.stat_view = ctk.CTkComboBox(
-            stat_view_frame,
-            values=["RiskManager", "Anzahl aktive EAs"],
-            command=self.on_stat_view_change,
-            width=170,
-        )
-        self.stat_view.set("RiskManager")
-        self.stat_view.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-
-    def on_stat_view_change(self, _=None):
-        mode = self.stat_view.get()  # "RiskManager" oder "Anzahl aktive EAs"
-        msg = {
-            "topic": "stat_view_update",
-            "mode": mode,
-        }
-        try:
-            self.cmd_q.put_nowait(msg)
-        except queue.Full:
-            pass
-
-        # sofortiges Redraw erzwingen (GUI-Seite)
-        self._redraw_statistik()
 
     def create_overlay_dialog(self, title, message, buttons=["OK"], default=None):
         """
@@ -462,30 +513,13 @@ class Gui(ctk.CTk):
         self.stop_polling()
         self.destroy()
 
-    def on_range_change(self, _=None):
-        """
-        Wird aufgerufen, wenn der Nutzer in der GUI den Range (max/mid/min) ändert.
-        Wir schicken ein Kommando an den MasterLoop, der daraufhin:
-          - seine Range-Variablen setzt
-          - intern die Timestamps zurücksetzt
-          - beim nächsten Poll eine 'reset'-Payload mit neuen Daten schickt.
-        """
-        msg = {
-            "topic": "range_update",
-            "balance": self.balance_range.get(),
-            "statistik": self.stat_range.get(),
-        }
-        try:
-            self.cmd_q.put_nowait(msg)
-        except queue.Full:
-            pass
 
     # ------------------------------------------------------------------ Balance-Plot
 
-    def _init_LO_frame(self):
-        self.LO_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
+    def _init_balance_plot(self, target_frame):
+        target_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
 
-        title = ctk.CTkLabel(self.LO_frame, text="Balance-Übersicht",
+        title = ctk.CTkLabel(target_frame, text="Balance-Übersicht",
                              font=("Segoe UI", 20, "bold"), text_color="#00bfff")
         title.pack(pady=(10, 5))
 
@@ -513,16 +547,16 @@ class Gui(ctk.CTk):
         for txt in leg.get_texts():
             txt.set_color("white")
 
-        self.canvas_bal = FigureCanvasTkAgg(self.fig_bal, master=self.LO_frame)
+        self.canvas_bal = FigureCanvasTkAgg(self.fig_bal, master=target_frame)
         self.canvas_bal.get_tk_widget().pack(expand=True, fill="both", padx=10, pady=10)
         self.canvas_bal.draw_idle()
 
     # ------------------------------------------------------------------ Statistik-Plot
 
-    def _init_RO_frame(self):
-        self.RO_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
+    def _init_risk_plot(self, target_frame):
+        target_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
 
-        self.title = ctk.CTkLabel(self.RO_frame, text="Statistik (RiskManager)",
+        self.title = ctk.CTkLabel(target_frame, text="Statistik (RiskManager)",
                                   font=("Segoe UI", 20, "bold"), text_color="#00bfff")
         self.title.pack(pady=(10, 5))
 
@@ -582,16 +616,16 @@ class Gui(ctk.CTk):
             ),
         )
 
-        self.canvas_sta = FigureCanvasTkAgg(self.fig_sta, master=self.RO_frame)
+        self.canvas_sta = FigureCanvasTkAgg(self.fig_sta, master=target_frame)
         self.canvas_sta.get_tk_widget().pack(expand=True, fill="both", padx=10, pady=10)
         self.canvas_sta.draw_idle()
 
     # ------------------------------------------------------------------ 3D-View (LU_frame)
 
-    def _init_LU_frame(self):
-        self.LU_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
+    def _init_3d_input_plot(self, target_frame):
+        target_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
 
-        title = ctk.CTkLabel(self.LU_frame, text="3D Parameter View (Strategie-Input)",
+        title = ctk.CTkLabel(target_frame, text="3D Parameter View (Strategie-Input)",
                              font=("Segoe UI", 20, "bold"), text_color="#00bfff")
         title.pack(pady=(10, 5))
 
@@ -625,13 +659,14 @@ class Gui(ctk.CTk):
         self.scatter = self.ax_3d.scatter([], [], [], c=[], cmap='viridis', marker='o')
 
         # Embed in Tkinter
-        self.canvas_3d = FigureCanvasTkAgg(self.fig_3d, master=self.LU_frame)
+        self.canvas_3d = FigureCanvasTkAgg(self.fig_3d, master=target_frame)
         self.canvas_3d.get_tk_widget().pack(expand=True, fill="both", padx=10, pady=10)
         
         # Einmaliges Laden der Daten
         self._update_3d_view()
 
     def _update_3d_view(self):
+        if not hasattr(self, "ax_3d"): return
         """
         Liest die Swarm-Daten aus der DB und aktualisiert den 3D-Plot.
         Aktive EAs = Gelb, Inaktive = Grau halbtransparent.
@@ -900,7 +935,8 @@ class Gui(ctk.CTk):
             return series
 
     def _redraw_balance(self):
-        mode = self.balance_range.get()
+        if not hasattr(self, "ax_bal"): return
+        mode = "max"
 
         live_series  = self._select_view_series(self.cache_live,  mode)
         paper_series = self._select_view_series(self.cache_paper, mode)
@@ -926,18 +962,9 @@ class Gui(ctk.CTk):
         self.canvas_bal.draw_idle()
 
     def _redraw_statistik(self):
-        """
-        Zeichnet das rechte obere Statistik-Fenster (RO_frame) abhängig von:
-        - self.stat_view_mode: "RiskManager" oder "Anzahl aktive EAs"
-        - self.stat_range:     "max", "mid", "min"
-        """
-
-        mode = self.stat_range.get()  # "max" | "mid" | "min"
-
-        # ------------------------------
-        # OPTION A – RiskManager
-        # ------------------------------
-        if self.stat_view_mode == "RiskManager":
+        if not hasattr(self, "ax_sta"): return
+        mode = "max"
+        if True:
             self.ax_sta.set_title("Statistik (RiskManager)", color="white")
 
             peak_series  = self._select_view_series(self.cache_peak,      mode)
@@ -974,33 +1001,6 @@ class Gui(ctk.CTk):
             # # feste Achsenskala für lambda
             #     self.ax_lambda.set_ylim(0.000, 0.0021)
             #     self.ax_lambda.set_xlim(self.ax_sta.get_xlim())
-
-        # ------------------------------
-        # OPTION B – Anzahl aktive EAs
-        # ------------------------------
-        else:
-            self.ax_sta.set_title("Anzahl aktive EAs (Timeline)", color="white")
-
-            active_series = self._select_view_series(self.cache_active_eas, mode)
-            active_xy     = self._to_xy(active_series) if active_series else ([], [])
-
-            if hasattr(self, "line_active"):
-                self.line_active.set_data(*active_xy)
-            else:
-                (self.line_active,) = self.ax_sta.plot([], [], color="cyan", linewidth=1.6)
-
-            self.line_peak.set_data([], [])
-            self.line_floor.set_data([], [])
-            self.line_paper_sta.set_data([], [])
-
-            xs, ys = active_xy
-            if xs and ys:
-                xmin, xmax = min(xs), max(xs)
-                ymin, ymax = min(ys), max(ys)
-                xr = (xmax - xmin) * 0.03 if xmax > xmin else 1
-                yr = max(1, (ymax - ymin) * 0.10)
-                self.ax_sta.set_xlim(xmin - xr, xmax + xr)
-                self.ax_sta.set_ylim(ymin - yr, ymax + yr)
 
         # Info-Box aktualisieren (jetzt inkl. λ)
         self.txt_active_box.set_text(
@@ -1122,7 +1122,7 @@ class Gui(ctk.CTk):
             return []
 
 
-    def _init_RU_frame(self):
+    def _init_3d_output_plot(self, target_frame):
         """
         Rechts unten: 3D-Scatterplot der Fitness (NetProfitNorm, ActivityNorm, R)
         Initialisiert die 3D-Achsen und den leeren Scatter-Plot.
@@ -1131,10 +1131,10 @@ class Gui(ctk.CTk):
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     
-        self.RU_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
+        target_frame.configure(fg_color=("#1e1e1e", "#1e1e1e"))
 
         title = ctk.CTkLabel(
-            self.RU_frame,
+            target_frame,
             text="3D Parameter View (Fitness Output)",
             font=("Segoe UI", 20, "bold"),
             text_color="#00bfff"
@@ -1184,12 +1184,13 @@ class Gui(ctk.CTk):
         )
     
         # In Tk einbetten
-        self.canvas_fit3d = FigureCanvasTkAgg(self.fig_fit3d, master=self.RU_frame)
+        self.canvas_fit3d = FigureCanvasTkAgg(self.fig_fit3d, master=target_frame)
         self.canvas_fit3d.get_tk_widget().pack(expand=True, fill="both", padx=10, pady=10)
         self.canvas_fit3d.draw_idle()    
 
 
     def _update_fitness_3d_view(self):
+        if not hasattr(self, "ax_fit3d"): return
         """
         Aktualisiert den 3D-Fitness-Scatter im RU_frame.
         Wird z.B. aus _poll_data_q zyklisch aufgerufen.
