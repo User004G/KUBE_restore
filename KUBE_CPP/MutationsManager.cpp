@@ -637,6 +637,7 @@ bool MutationsManager::perform_mutation_by_state(const std::string& ts)
     // FALLBACK: Wenn Ranking fehlschlägt (z.B. keine Fitness-Daten), dann Round-Robin
     if (!loaded_via_ranking)
     {
+        std::printf("[Mutation] Blockmutation\n");
         std::printf("[MutationsManager] Ranking failed or empty. Fallback to Round-Robin block.\n");
         if (!load_live_ea_params(live_eas))
         {
