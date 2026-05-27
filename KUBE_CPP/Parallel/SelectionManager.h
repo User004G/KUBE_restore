@@ -24,6 +24,13 @@ public:
     std::vector<int> select_worst_eas(int count);
 
     /**
+     * Wählt die 'count' besten EAs basierend auf NetProfitNorm aus der DB.
+     * @param count Anzahl der zu selektierenden EAs
+     * @return Vektor mit Magic-Numbers
+     */
+    std::vector<int> select_best_eas(int count);
+
+    /**
      * Wählt die besten und schlechtesten EAs für die Mutation.
      * @param fitness_data Die Fitness-Daten der EAs
      * @param best_eas Container für die besten EAs (aktuell leer gelassen)

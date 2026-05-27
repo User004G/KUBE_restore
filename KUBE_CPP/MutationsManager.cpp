@@ -316,7 +316,7 @@ bool MutationsManager::init()
     //swarm_context_eval_ = std::make_unique<SwarmContextEvaluator>(/* ... oder dummy ... */);
 
     strategies_.clear();
-    strategies_.push_back(std::unique_ptr<IMutationStrategy>(new DefaultMutationStrategy()));
+    strategies_.push_back(std::unique_ptr<IMutationStrategy>(new CrossoverMutationStrategy()));
 
     // SelectionManager initialisieren
     selection_manager_ = std::unique_ptr<SelectionManager>(new SelectionManager());
@@ -613,6 +613,17 @@ bool MutationsManager::perform_mutation_by_state(const std::string& ts)
         return false;  // Falls keine Strategie verfügbar ist, bricht die Mutation ab
     }
 
+    // 3.5) Best EAs für Crossover ermitteln und in den Kontext legen
+    if (selection_manager_)
+    {
+        std::vector<int> best_magics = selection_manager_->select_best_eas(4);
+        if (!best_magics.empty())
+        {
+            load_ea_params_by_magics(best_magics, ctx.best_eas);
+            std::printf("[MutationsManager] Loaded %zu best EAs for crossover.\n", ctx.best_eas.size());
+        }
+    }
+
     std::printf("[MutationsManager] Using strategy: %s (state=%d)\n",
         strat->name().c_str(), (int)current_state_);
 
@@ -623,7 +634,7 @@ bool MutationsManager::perform_mutation_by_state(const std::string& ts)
 
     if (selection_manager_)
     {
-        std::vector<int> worst_magics = selection_manager_->select_worst_eas(24);
+        std::vector<int> worst_magics = selection_manager_->select_worst_eas(12);
         if (!worst_magics.empty())
         {
             if (load_ea_params_by_magics(worst_magics, live_eas))

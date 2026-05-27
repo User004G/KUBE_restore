@@ -112,6 +112,54 @@ std::vector<int> SelectionManager::select_worst_eas(int count)
     return result;
 }
 
+std::vector<int> SelectionManager::select_best_eas(int count)
+{
+    std::vector<int> result;
+    if (!db_experts_) return result;
+
+    // 1. Neuesten Timestamp finden
+    std::string sql_ts = "SELECT MAX(ts_key) FROM Fitness_proBar;";
+    sqlite3_stmt* stmt = nullptr;
+    std::string latest_ts;
+
+    if (sqlite3_prepare_v2(db_experts_, sql_ts.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            const unsigned char* txt = sqlite3_column_text(stmt, 0);
+            if (txt) latest_ts = reinterpret_cast<const char*>(txt);
+        }
+    }
+    sqlite3_finalize(stmt);
+
+    if (latest_ts.empty()) {
+        std::cerr << "[SelectionManager] No timestamp found in Fitness_proBar.\n";
+        return result;
+    }
+
+    // 2. EAs für diesen Timestamp laden und sortieren
+    // Wir sortieren absteigend nach NetProfitNorm (beste zuerst).
+    std::string sql_query = 
+        "SELECT ea_magic FROM Fitness_proBar "
+        "WHERE ts_key = ? "
+        "ORDER BY NetProfitNorm DESC " // Beste zuerst (größter Profit)
+        "LIMIT ?;";
+
+    if (sqlite3_prepare_v2(db_experts_, sql_query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "[SelectionManager] SQL Error: " << sqlite3_errmsg(db_experts_) << "\n";
+        return result;
+    }
+
+    sqlite3_bind_text(stmt, 1, latest_ts.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, count);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        result.push_back(sqlite3_column_int(stmt, 0));
+    }
+    sqlite3_finalize(stmt);
+
+    std::printf("[SelectionManager] Selected %zu best EAs from ts=%s\n", result.size(), latest_ts.c_str());
+    return result;
+}
+
 bool SelectionManager::select_best_and_worst(
     const std::vector<EAParams>& fitness_data,
     std::vector<EAParams>& best_eas,
@@ -139,7 +187,7 @@ bool SelectionManager::select_best_and_worst(
         });
 
     // Nimm die schlechtesten N (vom Anfang, da aufsteigend sortiert)
-    int n_worst = (24 < (int)sorted_data.size()) ? 24 : (int)sorted_data.size();
+    int n_worst = (12 < (int)sorted_data.size()) ? 12 : (int)sorted_data.size();
     for (int i = 0; i < n_worst; ++i)
     {
         worst_eas.push_back(sorted_data[i]);

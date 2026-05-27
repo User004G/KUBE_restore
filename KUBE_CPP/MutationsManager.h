@@ -61,6 +61,9 @@ struct MutationContext {
     int param3_min = 0;
     int param3_max = 0;
 
+    // Für Crossover-Mutation: Die besten EAs
+    std::vector<EAParams> best_eas;
+
     // Abgeleitete Bewährungsfrist (in Bars) = c_schonfrist_multiplikator * c_mutations_zyklus
     int probation_bars = 0;
 
